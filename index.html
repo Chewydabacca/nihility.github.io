@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Pixel Portfolio — Start</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== Loading Screen ========== */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #01010a;
+      color: #00f0ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.9s ease;
+    }
+    #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+
+    .loader {
+      width: 60px; height: 60px;
+      border: 4px solid #003f5e;
+      border-top: 4px solid #00f0ff;
+      border-radius: 50%;
+      animation: spin 1.5s linear infinite;
+    }
+    .loading-text { margin-top: 22px; font-size: 12px; letter-spacing: 3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ========== Global ========== */
+    html,body { height:100%; margin:0; padding:0; background: black; overflow:hidden; }
+    body {
+      font-family: "Press Start 2P", monospace;
+      color: #00ffcc;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background-image: url('indexasset/background.png');
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      background-size: cover;
+      image-rendering: pixelated;
+    }
+
+    .container { text-align: center; z-index: 10; }
+
+    /* Stack image + button vertically */
+    .nihilityline {
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+    }
+
+    .nihility {
+      image-rendering: pixelated;
+      width:410px; height:405px; display:block;
+    }
+
+    .container1 {
+      text-align:center;
+      margin-top: 8px;
+      opacity: 0; /* will fade in */
+    }
+
+    .start-btn {
+      display:inline-block;
+      padding:14px 30px;
+      background:#111;
+      border:3px solid #00ffcc;
+      color:#00ffcc;
+      text-decoration:none;
+      cursor:pointer;
+      font-size:1rem;
+      transition: background .2s ease;
+    }
+    .start-btn:hover { background:#00ffcc; color:#111; }
+
+    h1.lead {
+      margin: 0 0 20px 0;
+      font-size: 12px;
+      color: #00ffcc;
+      text-shadow: 2px 2px #000;
+    }
+
+    /* ========== Gears ========== */
+    .gear1, .gear2 {
+      position: fixed;
+      width: 800px;
+      height: 800px;
+      image-rendering: pixelated;
+      pointer-events: none;
+      will-change: transform;
+      z-index: 100;
+      bottom: -45%;
+      opacity: 0.95;
+    }
+    .gear1 { right: -25%; }
+    .gear2 { left: -25%; }
+
+    /* ========== Transition overlay ========== */
+    #transition-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      z-index: 9000;
+      pointer-events: none;
+    }
+
+    /* small responsive tweak */
+    @media (max-width:520px) {
+      .nihility { width: 320px; height: 316px; }
+      .start-btn { padding: 10px 20px; font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading -->
+  <div id="loading-screen">
+    <div class="loader"></div>
+    <div class="loading-text">INITIALIZING SYSTEM...</div>
+  </div>
+
+  
+
+  <!-- Gears -->
+  <img src="indexasset/gear.png" alt="Gear" class="gear1" id="gear1">
+  <img src="indexasset/gear.png" alt="Gear" class="gear2" id="gear2">
+  
+  <!-- Main -->
+  <div class="container" aria-live="polite">
+    <h1 class="lead">Somewhere, something incredible is waiting to be known.</h1>
+
+    <div class="nihilityline">
+      <img class="nihility" src="indexasset/nihilitypaint.gif" alt="animation">
+      <div class="container1" id="startArea">
+        <h1 style="font-size:18px;margin:0 0 8px 0">A miniproject by Chewydabacca.</h1>
+        <a href="windows.html" class="start-btn" id="startBtn" role="button" aria-label="Start Game">▶ Start Game</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- overlay used for fade-to-black -->
+  <div id="transition-overlay" aria-hidden="true"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script>
+    // ---------- initial gear spins (saved so we can stop/kill them later) ----------
+    const gear1 = document.getElementById('gear1');
+    const gear2 = document.getElementById('gear2');
+    const gear1Spin = gsap.to(gear1, { rotation: 360, duration: 8, repeat: -1, ease: "linear" });
+    const gear2Spin = gsap.to(gear2, { rotation: -360, duration: 8, repeat: -1, ease: "linear" });
+
+    // ---------- loading screen fade ----------
+    window.addEventListener('load', () => {
+      const loading = document.getElementById('loading-screen');
+      setTimeout(() => {
+        loading.classList.add('fade-out');
+        setTimeout(() => loading.style.display = 'none', 900);
+      }, 900);
+    });
+
+    // ---------- show start area after image loads (with GSAP fade-in + pulse) ----------
+    const nihilityImg = document.querySelector('.nihility');
+    const startArea = document.getElementById('startArea');
+
+    function showStartArea() {
+      // fade in the start area
+      gsap.to(startArea, { opacity: 1, duration: 1.2, ease: "power2.inOut", onComplete: startPulse });
+    }
+
+    // if image already cached and complete, show immediately; otherwise wait for load
+    if (nihilityImg.complete) {
+      showStartArea();
+    } else {
+      nihilityImg.addEventListener('load', showStartArea);
+      // fallback in case load never fires (network oddities)
+      setTimeout(() => { if (startArea.style.opacity === "" || startArea.style.opacity === "0") showStartArea(); }, 2000);
+    }
+
+    function startPulse() {
+      gsap.to(".start-btn", {
+        scale: 1.08,
+        duration: 0.7,
+        ease: "power1.inOut",
+        yoyo: true,
+        repeat: -1
+      });
+    }
+
+    // ---------- transition sequence: gears slide out -> fade to black -> navigate ----------
+    const overlay = document.getElementById('transition-overlay');
+    const startBtn = document.getElementById('startBtn');
+
+    startBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+
+      // Prevent double clicks
+      startBtn.style.pointerEvents = 'none';
+
+      // make overlay block interactions immediately
+      overlay.style.pointerEvents = 'all';
+
+      // target url
+      const targetUrl = startBtn.getAttribute('href') || 'home.html';
+
+      // stop the infinite spin tweens so we can animate rotation cleanly
+      gear1Spin.kill();
+      gear2Spin.kill();
+
+      // compute a safe offscreen distance (based on viewport width)
+      const distance = Math.max(window.innerWidth, 1200) + 300;
+
+      // Timeline: move gears off-screen while they spin faster, then fade overlay
+      const tl = gsap.timeline({ defaults: { ease: "power2.inOut" } });
+
+      // move both gears at the same time (0 = start at time 0)
+      tl.to(gear1, { x: distance, duration: 1.15, rotation: '+=860', ease: "power3.in" }, 0)
+        .to(gear2, { x: -distance, duration: 1.15, rotation: '-=860', ease: "power3.in" }, 0)
+        .to(overlay, { opacity: 1, duration: 0.8, ease: "power2.inOut" }, "+=0.06")
+        .call(() => {
+          // finally navigate once everything is hidden
+          window.location.href = targetUrl;
+        });
+    });
+
+    // optional: also support keyboard "Enter" on the link/button for accessibility
+    startBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') startBtn.click();
+    });
+  </script>
+</body>
+</html>
