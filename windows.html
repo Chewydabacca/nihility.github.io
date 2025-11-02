@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Retro Desktop UI — Fixed Icon Click/Hold</title>
+<style>
+  body {
+    margin: 0;
+    background-image: url('windowsasset/sprite-animation (8).gif');
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
+    image-rendering: pixelated;
+    font-family: 'MS Sans Serif', sans-serif;
+    overflow: hidden;
+  }
+  
+  .content.scrollable {
+  overflow-y: auto;
+  max-height: calc(100% - 50px);
+  background: #dcdcdc;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+  /* Taskbar */
+  #taskbar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
+    background: #c0c0c0; border-top: 2px solid white; display:flex; align-items:center; padding:0 10px;}
+  #start-button { background:#dcdcdc; border:2px outset #fff; padding:4px 12px; cursor:pointer; font-weight:bold; }
+
+  /* Desktop icon */
+  .desktop-icon {
+    position: absolute;
+    width: 64px;
+    text-align: center;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    user-select: none;
+  }
+  .desktop-icon img { display:block; margin:0 auto 4px auto; pointer-events:none; }
+
+  /* Windows */
+  .window { position:absolute; background:#c0c0c0; border:3px outset white; width:300px; height:200px;
+    box-shadow:2px 2px 0 #808080; display:none; }
+  .title-bar { background:#000080; color:white; padding:4px; cursor:move; display:flex; justify-content:space-between; align-items:center; font-weight:bold; }
+  .content { padding:10px; background:#dcdcdc; height:calc(100% - 50px); overflow:auto; }
+  .close-btn { background:#c0c0c0; color:black; border:2px outset white; cursor:pointer; font-weight:bold; padding:0 6px; }
+  .window-content {
+  overflow-y: auto;     /* allows vertical scrolling */
+  overflow-x: hidden;   /* prevent sideways scroll */
+  max-height: 100%;     /* ensures it doesn’t spill out of the window */
+  padding-right: 8px;   /* add some space for the scrollbar */
+  scroll-behavior: smooth;
+}
+
+  /* creature & debug */
+  #creature { position:absolute; left:35%; top:10%; width:410px; height:405px; image-rendering:pixelated; pointer-events:none; user-select:none; }
+  #debug-box { position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color:#00ff88;
+    font-family: "Press Start 2P", monospace; font-size:10px; padding:6px 10px; border:1px solid #00ff88; border-radius:4px; user-select:none; }
+
+  /* small visual hint when dragging (optional) */
+  .desktop-icon.dragging { opacity: 0.85; transform: translateY(-2px); }
+  
+  
+/* ========== Gallery Styles ========== */
+.gallery-content {
+  position: relative;
+  background: #0f0f0f;
+  color: white;
+  overflow: hidden;
+  height: 100%;
+}
+
+.gallery-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.gallery-display {
+  position: relative;
+  text-align: center;
+  width: 80%;
+  overflow: hidden;
+}
+
+.gallery-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 48px;
+  color: rgba(1, 1, 1, 0.1);
+  letter-spacing: 10px;
+  position: relative;
+  z-index: 1;
+  user-select: none;
+  margin-bottom: 20px;
+}
+
+.gallery-image {
+  position: relative;
+  z-index: 2;
+  width: 320px;
+  height: auto;
+  box-shadow: none;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+}
+
+.gallery-desc {
+  position: relative;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #ccc;
+  opacity: 0.9;
+  transition: opacity 0.4s ease;
+}
+
+.arrow-btn {
+  background: #222;
+  color: white;
+  border: 2px outset #666;
+  font-size: 24px;
+  width: 40px;
+  height: 60px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  z-index: 3;
+}
+
+.arrow-btn:hover {
+  background: #333;
+}
+
+/* Sliding animation */
+.slide-out-left {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+.slide-out-right {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.slide-in-left {
+  transform: translateX(0%);
+  opacity: 1;
+  animation: slideInLeft 0.6s ease forwards;
+}
+.slide-in-right {
+  transform: translateX(0%);
+  opacity: 1;
+  animation: slideInRight 0.6s ease forwards;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0%); opacity: 1; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0%); opacity: 1; }
+}  
+
+/* Huge title behind image */
+#gallery-title {
+  font-family: 'Anton', sans-serif; 
+  font-size: 12vw; 
+  line-height: 0.9;
+  color: rgba(255,255,255,0.08);
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  user-select: none;
+}
+
+
+</style>
+</head>
+<body>
+
+<!-- GALLERY WINDOW -->
+<div class="window" id="gallery" style="top: 80px; left: 400px; width: 60%; height: 80%; display: none;">
+  <div class="title-bar">
+    Gallery
+    <div class="close-btn" onclick="closeWindow('gallery')">X</div>
+  </div>
+
+ <div class="content scrollable">
+ <div id="gallery-display" style="position:relative; width:100%; text-align:center; overflow:visible;">
+
+
+  <div id="gallery-display" style="position:relative; width:100%; text-align:center;">
+
+  <!-- Title overlay -->
+  <h1 id="gallery-title" style="
+      font-family: 'Anton', sans-serif;
+      font-size: 12vw;
+      line-height:0.9;
+      color: rgba(0,0,0,1); /* slightly transparent so image shows through */
+      position:absolute;
+      top:0;
+      left:50%;
+      transform:translateX(-50%);
+      z-index:1;
+      user-select:none;">
+      Fireoryx
+  </h1>
+
+  <!-- Image -->
+  <img id="gallery-image" src="https://placekitten.com/600/300"
+       alt="Gallery Image"
+       style="
+       width:20vw;
+       max-width:600px;
+       margin-top: 120px; /* pushes image below title */
+       z-index:2;
+       box-shadow:none;
+       transition:transform 0.5s ease, opacity 0.5s ease;">
+
+  <!-- Description -->
+  <div id="gallery-description" style="
+       width:100%;
+       text-align:center;
+       color:black;
+       margin-top:20px; /* space below image */
+       font-size:16px;">
+      This is a description of the current project.
+  </div>
+
+  <!-- Extra images -->
+  <div id="gallery-extra" style="
+       width:100%;
+       text-align:center;
+       margin-top:10px;">
+  </div>
+
+</div>
+
+
+  <!-- Fixed navigation buttons -->
+  <button id="prev-btn" style="
+    position:absolute; 
+    left:0;
+    top:50%;
+    transform:translateY(200%);
+    z-index:10;
+    font-size:2rem;
+    background:rgba(0,0,0,0.4);
+    color:white;
+    border:none;
+    padding:0.5em 1em;
+    cursor:pointer;">◀</button>
+
+<button id="next-btn" style="
+    position:absolute; 
+    right:0;
+    top:50%;
+    transform:translateY(200%);
+    z-index:10;
+    font-size:2rem;
+    background:rgba(0,0,0,0.4);
+    color:white;
+    border:none;
+    padding:0.5em 1em;
+    cursor:pointer;">▶</button>
+
+
+</div>
+</div>
+    </div>
+
+
+<img class="nihilityheadless" 
+     src="windowsasset/sprite-animation (6).gif" 
+     alt="animation"
+     style="position:absolute; left:35%; top:10%; width:410px; height:405px; image-rendering:pixelated; pointer-events:none; user-select:none;">
+
+  <!-- example icons: using data-app instead of inline onclick -->
+  <div class="desktop-icon" data-app="page1.html" style="top:50px; left:50px;">
+    <img src="windowsasset/pjkicon.png" width="48" height="48" alt="Projects">
+    <div>Projects</div>
+  </div>
+
+  <div class="desktop-icon" data-app="page2.html" style="top:50px; left:150px;">
+    <img src="icon2.png" width="48" height="48" alt="App2">
+    <div>App 2</div>
+  </div>
+  
+  <!-- GALLERY ICON -->
+<div class="desktop-icon" data-app="gallery" style="top:150px; left:50px;">
+  <img src="windowsasset/pjkicon.png" alt="Gallery" width="48" height="48">
+  <div>Gallery</div>
+</div>
+
+  <img id="creature" src="" alt="Creature">
+  <div id="debug-box">Current Frame: 1</div>
+
+  <!-- start menu -->
+  <div id="start-menu" style="display:none; position:fixed; bottom:40px; left:10px; background:#c0c0c0; border:2px outset white; width:200px;">
+    <ul style="list-style:none; margin:0; padding:4px;">
+      <li onclick="openWindow('home')" style="padding:4px 8px; cursor:pointer;">Home</li>
+      <li onclick="openWindow('Welcome')" style="padding:4px 8px; cursor:pointer;">Welcome</li>
+      <li onclick="openWindow('projects')" style="padding:4px 8px; cursor:pointer;">Projects</li>
+    </ul>
+  </div>
+
+  <div id="taskbar"><div id="start-button">Start</div></div>
+
+  <div class="window" id="home" style="top:80px; left:80px;">
+    <div class="title-bar">Home <div class="close-btn" onclick="closeWindow('home')">X</div></div>
+    <div class="content"><p>Welcome to my retro desktop site!</p></div>
+  </div>
+
+  <div class="window" id="Welcome" style="top:2%; right:2%; display:block;">
+    <div class="title-bar">Welcome <div class="close-btn" onclick="closeWindow('Welcome')">X</div></div>
+    <div class="content"><p>Welcome to my site! Drag the tabs around, or click on apps to view contents!.</p></div>
+  </div>
+
+  <div class="window" id="projects" style="top:120px; left:200px;">
+    <div class="title-bar">Projects <div class="close-btn" onclick="closeWindow('projects')">X</div></div>
+    <div class="content"><ul><li>Project A</li><li>Project B</li><li>Project C</li></ul></div>
+  </div>
+  
+  
+  
+  
+  
+  
+  
+  
+
+<script>
+/* core helpers and existing behavior kept */
+const startButton = document.getElementById('start-button');
+const startMenu = document.getElementById('start-menu');
+const windows = document.querySelectorAll('.window');
+const desktopIcons = document.querySelectorAll('.desktop-icon');
+let zIndexCounter = 1;
+
+startButton.addEventListener('click', () => {
+  startMenu.style.display = startMenu.style.display === 'block' ? 'none' : 'block';
+});
+
+function openWindow(id) {
+  const win = document.getElementById(id);
+  if (!win) return;
+  win.style.display = 'block';
+  win.style.zIndex = ++zIndexCounter;
+  startMenu.style.display = 'none';
+}
+function closeWindow(id) {
+  const win = document.getElementById(id);
+  if (!win) return;
+  win.style.display = 'none';
+}
+function openApp(url) {
+  if (url.endsWith('.html')) window.open(url, '_blank');
+  else openWindow(url); // treat as internal app/window
+}
+
+/* windows draggable (unchanged) */
+windows.forEach((win) => {
+  const header = win.querySelector('.title-bar');
+  let offsetX, offsetY, dragging = false;
+  header.addEventListener('mousedown', (e) => {
+    dragging = true;
+    offsetX = e.clientX - win.offsetLeft;
+    offsetY = e.clientY - win.offsetTop;
+    win.style.zIndex = ++zIndexCounter;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    win.style.left = e.clientX - offsetX + 'px';
+    win.style.top = e.clientY - offsetY + 'px';
+  });
+  document.addEventListener('mouseup', () => (dragging = false));
+});
+
+/* -------- ICON HANDLING: short-click opens; long hold >= 500ms prevents open --------
+   Behavior:
+   - quick click (press & release < 500ms, movement < 4px) -> open app
+   - hold >= 500ms -> do NOT open app (user intends to drag/hold)
+   - movement > 4px -> treat as drag (do not open)
+   - native click is suppressed when drag/hold detected
+*/
+desktopIcons.forEach(icon => {
+  // ensure absolute positioning
+  if (getComputedStyle(icon).position === 'static') icon.style.position = 'absolute';
+
+  const DRAG_THRESHOLD = 4; // px
+  const HOLD_MS = 500; // 0.5s
+  let startX = 0, startY = 0, offsetX = 0, offsetY = 0;
+  let isDragging = false, held = false, holdTimer = null;
+
+  // get app url (prefers data-app)
+  const getAppUrl = () => {
+    if (icon.dataset.app) return icon.dataset.app;
+    const onclickAttr = icon.getAttribute('onclick') || '';
+    const m = onclickAttr.match(/openApp\(['"](.+?)['"]\)/);
+    return m ? m[1] : null;
+  };
+
+  const onMove = e => {
+    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+    if (clientX == null || clientY == null) return;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    if (!isDragging && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+      isDragging = true;
+      held = false; // cancel hold if user starts moving
+      clearTimeout(holdTimer);
+      icon.classList.add('dragging');
+    }
+    if (isDragging) {
+      icon.style.left = (clientX - offsetX) + 'px';
+      icon.style.top  = (clientY - offsetY) + 'px';
+    }
+  };
+
+  const end = e => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', end);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', end);
+
+    clearTimeout(holdTimer);
+    // if it was a hold or drag, do not open
+    if (held || isDragging) {
+      // cleanup flags
+      held = false;
+      isDragging = false;
+      icon.classList.remove('dragging');
+      return;
+    }
+
+    // short click (no drag, no hold) -> open app
+    const url = getAppUrl();
+    if (url) openApp(url);
+    else console.warn('No app URL for icon', icon);
+  };
+
+  icon.addEventListener('mousedown', e => {
+    e.preventDefault();
+    startX = e.clientX; startY = e.clientY;
+    offsetX = e.clientX - icon.offsetLeft;
+    offsetY = e.clientY - icon.offsetTop;
+    isDragging = false; held = false;
+    icon.style.zIndex = ++zIndexCounter;
+    // start hold timer
+    holdTimer = setTimeout(() => { held = true; /* visual feedback if desired */ }, HOLD_MS);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', end);
+  });
+
+  icon.addEventListener('touchstart', e => {
+    e.preventDefault();
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    offsetX = startX - icon.offsetLeft; offsetY = startY - icon.offsetTop;
+    isDragging = false; held = false;
+    icon.style.zIndex = ++zIndexCounter;
+    holdTimer = setTimeout(() => { held = true; }, HOLD_MS);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', end);
+  });
+
+  // suppress native click if held or drag happened (prevents inline onclick from firing)
+  icon.addEventListener('click', (e) => {
+    if (held || isDragging) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      held = false;
+      isDragging = false;
+      icon.classList.remove('dragging');
+    }
+    // otherwise allow click — but note we already open the app in end()
+  });
+});
+
+/* ---- eye tracking (kept from your previous code) ---- */
+const creature = document.getElementById("creature");
+const debugBox = document.getElementById("debug-box");
+const frames = [
+  "eyetrack/eye1.png","eyetrack/eye2.png","eyetrack/eye3.png","eyetrack/eye4.png","eyetrack/eye5.png",
+  "eyetrack/eye6.png","eyetrack/eye7.png","eyetrack/eye8.png","eyetrack/eye9.png","eyetrack/eye10.png",
+  "eyetrack/eye11.png","eyetrack/eye12.png","eyetrack/eye13.png","eyetrack/eye14.png","eyetrack/eye15.png"
+];
+const cols = 5, rows = 3;
+let currentFrame = -1;
+creature.src = frames[7] || "";
+document.addEventListener("mousemove", (e) => {
+  const w = window.innerWidth, h = window.innerHeight;
+  const col = Math.min(Math.floor(e.clientX / (w/cols)), cols-1);
+  const row = Math.min(Math.floor(e.clientY / (h/rows)), rows-1);
+  const idx = row*cols + col;
+  if (idx !== currentFrame && frames[idx]) {
+    currentFrame = idx;
+    creature.src = frames[idx];
+    debugBox.textContent = `Current Frame: ${idx+1}`;
+  }
+});
+// preload
+frames.forEach(s => { const i=new Image(); i.src=s; });
+
+
+
+
+// ===== Gallerycontent =====
+const galleryItems = [
+  {
+    title: "Fireoryx",
+    image: "windowsasset/FIREORYX.png",
+    description: "A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.A blazing creature of flame and fury. The first in the elemental bestiary.",
+    extra: [
+      "windowsasset/FIREORYX.png",
+      "https://placekitten.com/201/200"
+    ]
+  },
+  {
+    title: "Cryovex",
+    image: "https://placekitten.com/601/300",
+    description: "An icy counterpart. Cold, analytical, and hauntingly still.",
+    extra: []
+  },
+  {
+    title: "Virex",
+    image: "https://placekitten.com/602/300",
+    description: "A viral entity — half-living, half-digital, spreading through data streams.",
+    extra: [
+      "https://placekitten.com/203/200"
+    ]
+  }
+];
+
+let currentGalleryIndex = 0;
+
+function renderGalleryItem(index, direction = 0) {
+  const item = galleryItems[index];
+  if (!item) return;
+
+  const title = document.getElementById("gallery-title");
+  const img = document.getElementById("gallery-image");
+  const desc = document.getElementById("gallery-description");
+  const extra = document.getElementById("gallery-extra");
+
+   // First fade out
+  img.style.opacity = 0;
+  title.style.opacity = 0;
+  desc.style.opacity = 0;
+
+  setTimeout(() => {
+    // Update content mid-transition
+    title.textContent = item.title;
+    img.src = item.image;
+    desc.textContent = item.description;
+    extra.innerHTML = item.extra
+      .map(url => `<img src="${url}" style="width:100px; height:auto; margin:5px; border:2px inset #808080;">`)
+      .join("");
+
+    // Fade back in smoothly
+    img.style.transition = "opacity 0.5s ease";
+    title.style.transition = "opacity 0.5s ease";
+    desc.style.transition = "opacity 0.5s ease";
+    img.style.opacity = 1;
+    title.style.opacity = 1;
+    desc.style.opacity = 1;
+  }, 300);
+}
+
+document.getElementById("prev-btn").addEventListener("click", () => {
+  currentGalleryIndex = (currentGalleryIndex - 1 + galleryItems.length) % galleryItems.length;
+  renderGalleryItem(currentGalleryIndex, -1);
+});
+document.getElementById("next-btn").addEventListener("click", () => {
+  currentGalleryIndex = (currentGalleryIndex + 1) % galleryItems.length;
+  renderGalleryItem(currentGalleryIndex, 1);
+});
+
+// Initial load
+renderGalleryItem(currentGalleryIndex);
+</script>
+</body>
+</html>
